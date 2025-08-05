@@ -5,13 +5,13 @@ import Client, {
   SubscribeUpdateTransaction,
 } from "@triton-one/yellowstone-grpc";
 import { ClientDuplexStream } from "@grpc/grpc-js";
-import bs58 from "bs58";
 import { env } from "node:process";
 import {
   CompiledInstruction,
   FormattedTransactionData,
   Message,
 } from "./interfaces";
+import { getAddressDecoder } from "@solana/addresses";
 
 export const getYellowstoneClient = (clusterName: "mainnet" | "devnet") => {
   const { yellowstoneEndpoint, yellowstoneToken } =
@@ -89,8 +89,9 @@ export const sendSubscribeRequest = (
 };
 
 // Was named 'convertSignature'
-const bufferToBase58 = (signature: Uint8Array): string => {
-  return bs58.encode(Buffer.from(signature));
+const bufferToBase58 = (addressBytes: Uint8Array): string => {
+  const addressDecoder = getAddressDecoder();
+  return addressDecoder.decode(addressBytes);
 };
 
 export const isSubscribeUpdateTransaction = (

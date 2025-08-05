@@ -13,7 +13,6 @@
   "dependencies": {
     "@grpc/grpc-js": "^1.13.4",
     "@triton-one/yellowstone-grpc": "^4.0.2",
-    "bs58": "^6.0.0",
     "solana-kite": "^1.5.4",
     "tsx": "^4.20.3"
   },
