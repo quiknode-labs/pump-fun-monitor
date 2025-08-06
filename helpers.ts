@@ -51,9 +51,10 @@ export const getYellowstoneEndpointAndToken = (
 
 export const createSubscribeRequest = (
   programIds: Array<string>,
-  requiredAccounts: Array<string>
+  requiredAccounts: Array<string>,
+  fromSlot: string | null = null
 ): SubscribeRequest => {
-  return {
+  const request: SubscribeRequest = {
     accounts: {},
     slots: {},
     transactions: {
@@ -71,6 +72,12 @@ export const createSubscribeRequest = (
     accountsDataSlice: [],
     ping: undefined,
   };
+
+  if (fromSlot) {
+    request.fromSlot = fromSlot;
+  }
+
+  return request;
 };
 
 export const sendSubscribeRequest = (

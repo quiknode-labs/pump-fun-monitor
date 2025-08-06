@@ -30,11 +30,22 @@ const ACCOUNTS_TO_INCLUDE = [
 ];
 
 const yellowstoneClient = getYellowstoneClient("mainnet");
+
+// Get current slot and calculate fromSlot (1000 slots ago)
+const currentSlot = Number(await yellowstoneClient.getSlot());
+const fromSlot = (currentSlot - 1000).toString();
+
+console.log(`Current slot: ${currentSlot}`);
+console.log(`Starting from slot: ${fromSlot} (1000 slots ago)`);
+
 const stream = await yellowstoneClient.subscribe();
-const request = createSubscribeRequest(programIds, requiredAccounts);
+
+// Create subscribe request with fromSlot parameter
+const request = createSubscribeRequest(programIds, requiredAccounts, fromSlot);
+
 await sendSubscribeRequest(stream, request);
 console.log(
-  "🔌 Geyser connection established - watching new Pump.fun token mints...\n"
+  "🔌 Geyser connection established - watching new Pump.fun token mints with fromSlot replay...\n"
 );
 await handleStreamEvents(
   stream,
