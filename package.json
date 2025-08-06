@@ -12,8 +12,8 @@
   "type": "module",
   "dependencies": {
     "@grpc/grpc-js": "^1.13.4",
+    "@solana/kit": "^2.3.0",
     "@triton-one/yellowstone-grpc": "^4.0.2",
-    "solana-kite": "^1.5.4",
     "tsx": "^4.20.3"
   },
   "devDependencies": {
