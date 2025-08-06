@@ -4,14 +4,51 @@ import {
   SubscribeUpdate,
   SubscribeUpdateTransaction,
 } from "@triton-one/yellowstone-grpc";
+import Client from "@triton-one/yellowstone-grpc";
 import { ClientDuplexStream } from "@grpc/grpc-js";
 import { formatData, matchesInstructionDiscriminator } from "./format";
 import { bufferToBase58 } from "./helpers";
+import {
+  MAX_SLOTS_TO_REPLAY,
+  MAX_TIME_TO_REPLAY_MINUTES,
+  MAX_TIME_TO_REPLAY_MS,
+  SOLANA_SLOT_TIME_MS,
+} from "./constants";
+
+export const getCurrentSlot = async (
+  yellowstoneClient: Client
+): Promise<number> => {
+  const currentSlotString = await yellowstoneClient.getSlot();
+  return Number(currentSlotString);
+};
+
+// fromTime is in milliseconds
+export const getSlotFromNow = async (
+  yellowstoneClient: Client,
+  timeAgo: number
+) => {
+  const now = Date.now();
+  const fromTime = now - timeAgo;
+
+  const slotsAgo = Math.ceil(timeAgo / SOLANA_SLOT_TIME_MS);
+  if (slotsAgo > MAX_SLOTS_TO_REPLAY) {
+    throw new Error(
+      `From time ${new Date(
+        fromTime
+      ).toISOString()} is too far in the past. Maximum time to replay is ${MAX_TIME_TO_REPLAY_MINUTES} minutes.`
+    );
+  }
+
+  const currentSlot = await getCurrentSlot(yellowstoneClient);
+  const fromSlot = currentSlot - slotsAgo;
+
+  return fromSlot;
+};
 
 export const createSubscribeRequest = (
   programIds: Array<string>,
   requiredAccounts: Array<string>,
-  fromSlot: string | null = null
+  fromSlot: number | null = null
 ): SubscribeRequest => {
   const request: SubscribeRequest = {
     accounts: {},
@@ -33,7 +70,7 @@ export const createSubscribeRequest = (
   };
 
   if (fromSlot) {
-    request.fromSlot = fromSlot;
+    request.fromSlot = String(fromSlot);
   }
 
   return request;
@@ -96,7 +133,7 @@ export const handleData = (
   const formattedData = formatData(
     message,
     base58TransactionSignature,
-    data.transaction.slot,
+    Number(data.transaction.slot),
     instructionDiscriminators,
     accountsToInclude
   );

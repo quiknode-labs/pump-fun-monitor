@@ -6,8 +6,8 @@ export interface CompiledInstruction {
 
 export interface FormattedTransactionData {
   transaction: string;
-  slot: string;
-  [accountName: string]: string;
+  slot: number;
+  mint: string;
 }
 
 export interface Message {
