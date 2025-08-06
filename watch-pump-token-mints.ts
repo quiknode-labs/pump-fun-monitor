@@ -52,10 +52,10 @@ const yellowstoneClient = new Client(yellowstoneEndpoint, yellowstoneToken, {});
 const stream = await yellowstoneClient.subscribe();
 
 // Typically, we would record the most recent slot
-const fromSlot = 358347908;
+// const fromSlot = 358347908;
 
 // If we want to get the last 5 minutes of transactions
-// const fromSlot = await getSlotFromNow(yellowstoneClient, 5 * MINUTES);
+const fromSlot = await getSlotFromNow(yellowstoneClient, 5 * MINUTES);
 
 // Create subscribe request with fromSlot parameter
 const request = createSubscribeRequest(programIds, requiredAccounts, fromSlot);
