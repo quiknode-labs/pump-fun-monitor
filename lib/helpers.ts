@@ -10,7 +10,7 @@ import {
   CompiledInstruction,
   FormattedTransactionData,
   Message,
-} from "./interfaces";
+} from "../interfaces";
 import { getAddressDecoder } from "@solana/addresses";
 
 export const getYellowstoneClient = (clusterName: "mainnet" | "devnet") => {

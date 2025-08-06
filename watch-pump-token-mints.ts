@@ -3,7 +3,7 @@ import {
   getYellowstoneClient,
   handleStreamEvents,
   sendSubscribeRequest,
-} from "./helpers";
+} from "./lib/helpers";
 
 const PUMP_FUN_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 const PUMP_FUN_MINT_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";
