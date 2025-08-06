@@ -1,16 +1,18 @@
 import {
   createSubscribeRequest,
-  getYellowstoneClient,
   handleStreamEvents,
   sendSubscribeRequest,
-} from "./lib/helpers";
+} from "./lib/yellowstone";
+import { getYellowstoneClient } from "./lib/quicknode";
 
+// We're watching the pump.fun program
 const PUMP_FUN_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
-const PUMP_FUN_MINT_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";
-
+// We're watching the createToken() instruction handler
 const PUMP_FUN_CREATE_INSTRUCTION_HANDLER_DISCRIMINATOR = Buffer.from([
   24, 30, 200, 40, 5, 28, 7, 119,
 ]);
+
+const PUMP_FUN_MINT_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";
 
 // Configuration
 const programIds: Array<string> = [PUMP_FUN_PROGRAM_ID];
