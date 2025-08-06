@@ -8,7 +8,7 @@ import {
 export const formatData = (
   message: Message,
   transactionSignature: string,
-  slot: string,
+  slot: number,
   instructionDiscriminators: Array<Uint8Array>,
   accountsToInclude: Array<{ name: string; index: number }>
 ): FormattedTransactionData | null => {
@@ -34,7 +34,7 @@ export const formatData = (
   return {
     transaction: transactionSignature,
     slot,
-    ...includedAccounts,
+    mint: includedAccounts.mint,
   };
 };
 
