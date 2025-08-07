@@ -1,6 +1,3 @@
-import Client from "@triton-one/yellowstone-grpc";
-import { env } from "node:process";
-
 // Convert the RPC endpoint to a Yellowstone endpoint and token
 export const getYellowstoneEndpointAndToken = (rpcEndpoint: string) => {
   // Convert endpoint to URL object

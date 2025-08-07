@@ -1,20 +1,18 @@
-import {
+import Client, {
   CommitmentLevel,
   SubscribeRequest,
   SubscribeUpdate,
-  SubscribeUpdateTransaction,
 } from "@triton-one/yellowstone-grpc";
-import Client from "@triton-one/yellowstone-grpc";
 import { ClientDuplexStream } from "@grpc/grpc-js";
-import { formatData, matchesInstructionDiscriminator } from "./format";
-import { bufferToBase58 } from "./helpers";
+import { bufferToBase58, getExplorerUrl } from "./helpers";
+import { CompiledInstruction, MintInformation } from "./interfaces";
 import {
   MAX_SLOTS_TO_REPLAY,
   MAX_TIME_TO_REPLAY_MINUTES,
-  MAX_TIME_TO_REPLAY_MS,
   SOLANA_SLOT_TIME_MS,
 } from "./constants";
 
+// Yellowstone natively returns the slot as a string, so let's fix that.
 export const getCurrentSlot = async (
   yellowstoneClient: Client
 ): Promise<number> => {
@@ -22,8 +20,8 @@ export const getCurrentSlot = async (
   return Number(currentSlotString);
 };
 
-// fromTime is in milliseconds
-export const getSlotFromNow = async (
+// Allow us to get the slot from a given time in the past
+export const getSlotFromTimeAgo = async (
   yellowstoneClient: Client,
   timeAgo: number
 ) => {
@@ -46,17 +44,25 @@ export const getSlotFromNow = async (
 };
 
 export const createSubscribeRequest = (
-  programIds: Array<string>,
+  includedAccounts: Array<string>,
+  excludedAccounts: Array<string>,
   requiredAccounts: Array<string>,
   fromSlot: number | null = null
 ): SubscribeRequest => {
+  // See https://github.com/rpcpool/yellowstone-grpc?tab=readme-ov-file#filters-for-streamed-data for full list of filters.
   const request: SubscribeRequest = {
+    commitment: CommitmentLevel.CONFIRMED,
     accounts: {},
     slots: {},
     transactions: {
+      // We can have multiple filters here, but for this demo, we'll only have one.
+      // When we get events, we can check which filter was matched.
+      // https://github.com/rpcpool/yellowstone-grpc?tab=readme-ov-file#transactions
       pumpFun: {
-        accountInclude: programIds,
-        accountExclude: [],
+        vote: false,
+        failed: false,
+        accountInclude: includedAccounts,
+        accountExclude: excludedAccounts,
         accountRequired: requiredAccounts,
       },
     },
@@ -64,12 +70,12 @@ export const createSubscribeRequest = (
     entry: {},
     blocks: {},
     blocksMeta: {},
-    commitment: CommitmentLevel.CONFIRMED,
     accountsDataSlice: [],
     ping: undefined,
   };
 
   if (fromSlot) {
+    // Yellowstone expects the slot as a string, so let's fix that.
     request.fromSlot = String(fromSlot);
   }
 
@@ -91,58 +97,84 @@ export const sendSubscribeRequest = (
   });
 };
 
-export const isSubscribeUpdateTransaction = (
-  data: SubscribeUpdate
-): data is SubscribeUpdate & { transaction: SubscribeUpdateTransaction } => {
+export const checkInstructionMatchesInstructionHandlers = (
+  instruction: CompiledInstruction,
+  instructionHandlerDiscriminators: Array<Uint8Array>
+): boolean => {
   return (
-    "transaction" in data &&
-    typeof data.transaction === "object" &&
-    data.transaction !== null &&
-    "slot" in data.transaction &&
-    "transaction" in data.transaction
+    instruction?.data &&
+    instructionHandlerDiscriminators.some((instructionHandlerDiscriminator) =>
+      Buffer.from(instructionHandlerDiscriminator).equals(
+        instruction.data.slice(0, 8)
+      )
+    )
   );
 };
 
-export const handleData = (
-  data: SubscribeUpdate,
-  instructionDiscriminators: Array<Uint8Array>,
-  accountsToInclude: Array<{ name: string; index: number }>
-): void => {
-  if (
-    !isSubscribeUpdateTransaction(data) ||
-    !data.filters.includes("pumpFun")
-  ) {
-    return;
-  }
-
-  const transaction = data.transaction?.transaction;
-  const message = transaction?.transaction?.message;
-
-  if (!transaction || !message) {
-    return;
-  }
-
-  const matchingInstruction = message.instructions.find((instruction) =>
-    matchesInstructionDiscriminator(instruction, instructionDiscriminators)
+export const getAccountsByName = (
+  accountsToInclude: Array<{ name: string; index: number }>,
+  instruction: CompiledInstruction,
+  accountKeys: Array<Uint8Array>
+): Record<string, string> => {
+  return accountsToInclude.reduce<Record<string, string>>(
+    (accumulator, account) => {
+      const accountIndex = instruction.accounts[account.index];
+      const address = bufferToBase58(accountKeys[accountIndex]);
+      accumulator[account.name] = address;
+      return accumulator;
+    },
+    {}
   );
-  if (!matchingInstruction) {
-    return;
+};
+
+export const getMintInfoFromUpdate = (
+  update: SubscribeUpdate,
+  instructionHandlerDiscriminators: Array<Uint8Array>,
+  accountsToInclude: Array<{ name: string; index: number }>
+): null | MintInformation => {
+  // Check the filter name that was matched
+  // (Yellowstone also sends other things like 'ping' updates, but we don't care about those)
+  if (!update.filters.includes("pumpFun")) {
+    return null;
   }
+
+  // These should never happen in this demo,
+  // since our filter's matches will include the right properties.
+  // but let's satisfy the type checker.
+  const transaction = update.transaction?.transaction;
+  const message = transaction?.transaction?.message;
+  const slot = update.transaction?.slot;
+  if (!transaction || !message || !slot) {
+    return null;
+  }
+
+  // Find the instruction that matches our target instruction handler
+  const instruction =
+    message.instructions.find((instruction) =>
+      checkInstructionMatchesInstructionHandlers(
+        instruction,
+        instructionHandlerDiscriminators
+      )
+    ) || null;
+  if (!instruction) {
+    return null;
+  }
+
+  // Make a nice Object of account value/address pairs, so we can get the address
+  // values this instruction used for each account name.
+  const accountsByName = getAccountsByName(
+    accountsToInclude,
+    instruction,
+    message.accountKeys
+  );
 
   const base58TransactionSignature = bufferToBase58(transaction.signature);
-  const formattedData = formatData(
-    message,
-    base58TransactionSignature,
-    Number(data.transaction.slot),
-    instructionDiscriminators,
-    accountsToInclude
-  );
 
-  if (formattedData) {
-    console.log("💊 New Pump.fun Mint Detected!");
-    console.table(formattedData);
-    console.log("\n");
-  }
+  return {
+    mint: getExplorerUrl(accountsByName.mint, "address"),
+    transaction: getExplorerUrl(base58TransactionSignature, "tx"),
+    slot: Number(slot),
+  };
 };
 
 export const handleStreamEvents = (
@@ -151,9 +183,19 @@ export const handleStreamEvents = (
   accountsToInclude: Array<{ name: string; index: number }>
 ): Promise<void> => {
   return new Promise<void>((resolve, reject) => {
-    stream.on("data", (data: SubscribeUpdate) =>
-      handleData(data, instructionDiscriminators, accountsToInclude)
-    );
+    stream.on("data", (update: SubscribeUpdate) => {
+      const mintInfo = getMintInfoFromUpdate(
+        update,
+        instructionDiscriminators,
+        accountsToInclude
+      );
+
+      if (mintInfo) {
+        console.log("💊 New Pump.fun Mint Detected!");
+        console.table(mintInfo);
+        console.log("\n");
+      }
+    });
     stream.on("error", (error: Error) => {
       console.error("Stream error:", error);
       reject(error);

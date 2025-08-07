@@ -4,29 +4,8 @@ export interface CompiledInstruction {
   data: Uint8Array;
 }
 
-export interface FormattedTransactionData {
+export interface MintInformation {
+  mint: string;
   transaction: string;
   slot: number;
-  mint: string;
-}
-
-export interface Message {
-  header: MessageHeader | undefined;
-  accountKeys: Array<Uint8Array>;
-  recentBlockhash: Uint8Array;
-  instructions: Array<CompiledInstruction>;
-  versioned: boolean;
-  addressTableLookups: Array<MessageAddressTableLookup>;
-}
-
-export interface MessageHeader {
-  numRequiredSignatures: number;
-  numReadonlySignedAccounts: number;
-  numReadonlyUnsignedAccounts: number;
-}
-
-export interface MessageAddressTableLookup {
-  accountKey: Uint8Array;
-  writableIndexes: Uint8Array;
-  readonlyIndexes: Uint8Array;
 }
