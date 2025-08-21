@@ -12,14 +12,21 @@ import {
   getInstructionHandlerDiscriminator,
   getAccountsFromIdl,
 } from "./lib/helpers";
+
+// Downloaded from https://explorer.solana.com/address/61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH/idl
+// (we know that's the address because when you make a swap, the transaction includes this program address)
 import programIdl from "./program.json";
 
 // We're watching the pump.fun program
-const PROGRAM_ID = programIdl.address;
+// Note the program address in the IDL is not correct.
+
+// Not programIdl.address;
+// See https://solana.stackexchange.com/questions/23189/why-would-the-address-in-a-programs-idl-not-match-where-its-actually-deployed
+const PROGRAM_ID = "61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH";
 
 // We're watching the create() instruction handler
-const PUMP_FUN_CREATE_INSTRUCTION_HANDLER_DISCRIMINATOR =
-  getInstructionHandlerDiscriminator(programIdl, "create");
+const JUPUTER_ORDER_ENGINE_FILL_INSTRUCTION_HANDLER_DISCRIMINATOR =
+  getInstructionHandlerDiscriminator(programIdl, "fill");
 
 const PUMP_FUN_MINT_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";
 
@@ -31,7 +38,7 @@ const requiredAccounts: Array<string> = [PROGRAM_ID, PUMP_FUN_MINT_AUTHORITY];
 
 // After we get the events from Yellowstone gRPC, we'll filter them by the instruction handler (onchain function) being invoked
 const instructionDiscriminators: Array<Uint8Array> = [
-  PUMP_FUN_CREATE_INSTRUCTION_HANDLER_DISCRIMINATOR,
+  JUPUTER_ORDER_ENGINE_FILL_INSTRUCTION_HANDLER_DISCRIMINATOR,
 ];
 
 // Get account information from the IDL for the create instruction
