@@ -4,8 +4,8 @@ export interface CompiledInstruction {
   data: Uint8Array;
 }
 
-export interface MintInformation {
-  mint: string;
+export interface EventInformation {
+  accounts: Record<string, string>;
   transaction: string;
   slot: number;
 }

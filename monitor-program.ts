@@ -15,7 +15,7 @@ import {
 
 // Downloaded from https://explorer.solana.com/address/61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH/idl
 // (we know that's the address because when you make a swap, the transaction includes this program address)
-import programIdl from "./program.json";
+import programIdl from "./jupiter-order-engine.json";
 
 // IDL has an incorrect programIdl.address value
 // See https://solana.stackexchange.com/questions/23189/why-would-the-address-in-a-programs-idl-not-match-where-its-actually-deployed
@@ -23,7 +23,7 @@ const JUPITER_ORDER_ENGINE_ADDRESS =
   "61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH";
 programIdl.address = JUPITER_ORDER_ENGINE_ADDRESS;
 
-// Monitor my own wallet
+// Monitor my own wallet and Shaq's wallet
 const MIKEMACCANA_DOT_SOL = "dDCQNnDmNbFVi8cQhKAgXhyhXeJ625tvwsunRyRc7c8";
 const SHAQ_DOT_SOL = "gacMrsrxNisAhCfgsUAVbwmTC3w9nJB6NychLAnTQFv";
 
@@ -88,7 +88,7 @@ const request = createSubscribeRequest(
 
 await sendSubscribeRequest(stream, request);
 console.log(
-  "🔌 Geyser connection established - watching program for swaps...\n"
+  "🔌 Geyser connection established - watching program for events...\n"
 );
 await handleStreamEvents(
   stream,

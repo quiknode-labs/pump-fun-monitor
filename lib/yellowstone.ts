@@ -5,7 +5,7 @@ import Client, {
 } from "@triton-one/yellowstone-grpc";
 import { ClientDuplexStream } from "@grpc/grpc-js";
 import { bufferToBase58, getExplorerUrl } from "./helpers";
-import { CompiledInstruction, MintInformation } from "./interfaces";
+import { CompiledInstruction, EventInformation } from "./interfaces";
 import {
   MAX_SLOTS_TO_REPLAY,
   MAX_TIME_TO_REPLAY_MINUTES,
@@ -131,7 +131,7 @@ export const getEventInfoFromUpdate = (
   update: SubscribeUpdate,
   instructionHandlerDiscriminators: Array<Uint8Array>,
   accountsToInclude: Array<{ name: string; index: number }>
-): null | MintInformation => {
+): null | EventInformation => {
   // Check the filter name that was matched
   // (Yellowstone also sends other things like 'ping' updates, but we don't care about those)
   if (!update.filters.includes("myFilter")) {
@@ -170,10 +170,16 @@ export const getEventInfoFromUpdate = (
 
   const base58TransactionSignature = bufferToBase58(transaction.signature);
 
+  // Make a object with the account name and the explorer url
+  const accountsByNameWithExplorerUrls: Record<string, string> = {};
+  Object.entries(accountsByName).forEach(([key, value]) => {
+    accountsByNameWithExplorerUrls[key] = getExplorerUrl(value, "address");
+  });
+
   return {
-    mint: getExplorerUrl(accountsByName.mint, "address"),
     transaction: getExplorerUrl(base58TransactionSignature, "tx"),
     slot: Number(slot),
+    accounts: accountsByNameWithExplorerUrls,
   };
 };
 
