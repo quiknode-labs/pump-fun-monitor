@@ -17,24 +17,29 @@ import {
 // (we know that's the address because when you make a swap, the transaction includes this program address)
 import programIdl from "./program.json";
 
-// We're watching the pump.fun program
-// Note the program address in the IDL is not correct.
-
-// Not programIdl.address;
+// IDL has an incorrect programIdl.address value
 // See https://solana.stackexchange.com/questions/23189/why-would-the-address-in-a-programs-idl-not-match-where-its-actually-deployed
-const PROGRAM_ID = "61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH";
+const JUPITER_ORDER_ENGINE_ADDRESS =
+  "61DFfeTKM7trxYcPQCM78bJ794ddZprZpAwAnLiwTpYH";
+programIdl.address = JUPITER_ORDER_ENGINE_ADDRESS;
+
+// Monitor my own wallet
+const MIKEMACCANA_DOT_SOL = "dDCQNnDmNbFVi8cQhKAgXhyhXeJ625tvwsunRyRc7c8";
+const SHAQ_DOT_SOL = "gacMrsrxNisAhCfgsUAVbwmTC3w9nJB6NychLAnTQFv";
+
+const PROGRAM_ID = programIdl.address;
 
 // We're watching the create() instruction handler
 const JUPUTER_ORDER_ENGINE_FILL_INSTRUCTION_HANDLER_DISCRIMINATOR =
   getInstructionHandlerDiscriminator(programIdl, "fill");
 
-const PUMP_FUN_MINT_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";
-
 // The program and required accounts to watch via Yellowstone gRPC
 // See https://github.com/rpcpool/yellowstone-grpc?tab=readme-ov-file#filters-for-streamed-data for full list of filters.
-const includedAccounts: Array<string> = [];
+// Any of these accounts must be included in the transaction.
+const includedAccounts: Array<string> = [MIKEMACCANA_DOT_SOL, SHAQ_DOT_SOL];
 const excludedAccounts: Array<string> = [];
-const requiredAccounts: Array<string> = [PROGRAM_ID, PUMP_FUN_MINT_AUTHORITY];
+// All of these accounts must be included in the transaction.
+const requiredAccounts: Array<string> = [PROGRAM_ID];
 
 // After we get the events from Yellowstone gRPC, we'll filter them by the instruction handler (onchain function) being invoked
 const instructionDiscriminators: Array<Uint8Array> = [
