@@ -58,7 +58,7 @@ export const createSubscribeRequest = (
       // We can have multiple filters here, but for this demo, we'll only have one.
       // When we get events, we can check which filter was matched.
       // https://github.com/rpcpool/yellowstone-grpc?tab=readme-ov-file#transactions
-      pumpFun: {
+      myFilter: {
         vote: false,
         failed: false,
         accountInclude: includedAccounts,
@@ -127,14 +127,14 @@ export const getAccountsByName = (
   );
 };
 
-export const getMintInfoFromUpdate = (
+export const getEventInfoFromUpdate = (
   update: SubscribeUpdate,
   instructionHandlerDiscriminators: Array<Uint8Array>,
   accountsToInclude: Array<{ name: string; index: number }>
 ): null | MintInformation => {
   // Check the filter name that was matched
   // (Yellowstone also sends other things like 'ping' updates, but we don't care about those)
-  if (!update.filters.includes("pumpFun")) {
+  if (!update.filters.includes("myFilter")) {
     return null;
   }
 
@@ -184,15 +184,15 @@ export const handleStreamEvents = (
 ): Promise<void> => {
   return new Promise<void>((resolve, reject) => {
     stream.on("data", (update: SubscribeUpdate) => {
-      const mintInfo = getMintInfoFromUpdate(
+      const eventInfo = getEventInfoFromUpdate(
         update,
         instructionDiscriminators,
         accountsToInclude
       );
 
-      if (mintInfo) {
-        console.log("💊 New Pump.fun Mint Detected!");
-        console.table(mintInfo);
+      if (eventInfo) {
+        console.log("✅ Event Detected!");
+        console.table(eventInfo);
         console.log("\n");
       }
     });

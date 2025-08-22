@@ -48,9 +48,15 @@ const instructionDiscriminators: Array<Uint8Array> = [
 
 // Get account information from the IDL for the create instruction
 // This will include all accounts used in the create instruction with their names and indices
-const ACCOUNTS_TO_INCLUDE = getAccountsFromIdl(programIdl, "create", ["mint"]);
-
-console.log("🔍 Accounts to include:", ACCOUNTS_TO_INCLUDE);
+const ACCOUNTS_TO_INCLUDE: Array<{
+  name: string;
+  index: number;
+}> = getAccountsFromIdl(programIdl, "fill", [
+  "taker",
+  "maker",
+  "input_mint",
+  "output_mint",
+]);
 
 const rpcEndpoint = env["QUICKNODE_SOLANA_MAINNET_ENDPOINT"];
 if (!rpcEndpoint) {
@@ -82,7 +88,7 @@ const request = createSubscribeRequest(
 
 await sendSubscribeRequest(stream, request);
 console.log(
-  "🔌 Geyser connection established - watching new Pump.fun token mints...\n"
+  "🔌 Geyser connection established - watching program for swaps...\n"
 );
 await handleStreamEvents(
   stream,
