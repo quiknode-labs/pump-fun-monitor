@@ -4,8 +4,18 @@ import Client, {
   SubscribeUpdate,
 } from "@triton-one/yellowstone-grpc";
 import { ClientDuplexStream } from "@grpc/grpc-js";
-import { bufferToBase58, getExplorerUrl } from "./helpers";
-import { CompiledInstruction, EventInformation } from "./interfaces";
+import {
+  bufferToBase58,
+  getAccountsFromIdl,
+  getExplorerUrl,
+  getInstructionHandlerDiscriminator,
+} from "./helpers";
+import {
+  BigFilterConfig,
+  CompiledInstruction,
+  EventInformation,
+  ExpendedBigFilterConfig,
+} from "./interfaces";
 import {
   MAX_SLOTS_TO_REPLAY,
   MAX_TIME_TO_REPLAY_MINUTES,
@@ -44,9 +54,7 @@ export const getSlotFromTimeAgo = async (
 };
 
 export const createSubscribeRequest = (
-  includedAccounts: Array<string>,
-  excludedAccounts: Array<string>,
-  requiredAccounts: Array<string>,
+  configs: Array<BigFilterConfig>,
   fromSlot: number | null = null
 ): SubscribeRequest => {
   // See https://github.com/rpcpool/yellowstone-grpc?tab=readme-ov-file#filters-for-streamed-data for full list of filters.
@@ -54,25 +62,27 @@ export const createSubscribeRequest = (
     commitment: CommitmentLevel.CONFIRMED,
     accounts: {},
     slots: {},
-    transactions: {
-      // We can have multiple filters here, but for this demo, we'll only have one.
-      // When we get events, we can check which filter was matched.
-      // https://github.com/rpcpool/yellowstone-grpc?tab=readme-ov-file#transactions
-      myFilter: {
-        vote: false,
-        failed: false,
-        accountInclude: includedAccounts,
-        accountExclude: excludedAccounts,
-        accountRequired: requiredAccounts,
-      },
-    },
+    transactions: {},
     transactionsStatus: {},
     entry: {},
     blocks: {},
     blocksMeta: {},
     accountsDataSlice: [],
+    // Yellowstone uses explicit undefined rather than TS optional params
+    // TODO: fix upstream
     ping: undefined,
   };
+
+  // Now add all the yellowstone filters
+  configs.forEach((config) => {
+    request.transactions[config.yellowStoneFilter.name] = {
+      vote: false,
+      failed: false,
+      accountInclude: config.yellowStoneFilter.includedAccounts,
+      accountExclude: config.yellowStoneFilter.excludedAccounts,
+      accountRequired: config.yellowStoneFilter.requiredAccounts,
+    };
+  });
 
   if (fromSlot) {
     // Yellowstone expects the slot as a string, so let's fix that.
@@ -98,14 +108,14 @@ export const sendSubscribeRequest = (
 };
 
 export const checkInstructionMatchesInstructionHandlers = (
-  instruction: CompiledInstruction,
+  incomingInstruction: CompiledInstruction,
   instructionHandlerDiscriminators: Array<Uint8Array>
 ): boolean => {
   return (
-    instruction?.data &&
+    incomingInstruction?.data &&
     instructionHandlerDiscriminators.some((instructionHandlerDiscriminator) =>
       Buffer.from(instructionHandlerDiscriminator).equals(
-        instruction.data.slice(0, 8)
+        incomingInstruction.data.slice(0, 8)
       )
     )
   );
@@ -129,11 +139,13 @@ export const getAccountsByName = (
 
 export const getEventInfoFromUpdate = (
   update: SubscribeUpdate,
-  instructionHandlerDiscriminators: Array<Uint8Array>,
-  accountsToInclude: Array<{ name: string; index: number }>
+  expandedConfigs: Array<ExpendedBigFilterConfig>
 ): null | EventInformation => {
   // Check the filter name that was matched
   // (Yellowstone also sends other things like 'ping' updates, but we don't care about those)
+
+  // FOREACH OR MAP HERE
+
   if (!update.filters.includes("myFilter")) {
     return null;
   }
@@ -185,16 +197,30 @@ export const getEventInfoFromUpdate = (
 
 export const handleStreamEvents = (
   stream: ClientDuplexStream<SubscribeRequest, SubscribeUpdate>,
-  instructionDiscriminators: Array<Uint8Array>,
-  accountsToInclude: Array<{ name: string; index: number }>
+  configs: Array<BigFilterConfig>
 ): Promise<void> => {
+  const expandedConfigs: Array<ExpendedBigFilterConfig> = configs.map(
+    (config) => {
+      return {
+        ...config,
+        // Show transactions that call these instruction handlers
+        instructionDiscriminator: getInstructionHandlerDiscriminator(
+          config.idl,
+          config.instructionHandler.name
+        ),
+        // And show these accounts in the event
+        accountsToInclude: getAccountsFromIdl(
+          config.idl,
+          config.instructionHandler.name,
+          config.instructionHandler.accountsToIncludeInEvent
+        ),
+      };
+    }
+  );
+
   return new Promise<void>((resolve, reject) => {
     stream.on("data", (update: SubscribeUpdate) => {
-      const eventInfo = getEventInfoFromUpdate(
-        update,
-        instructionDiscriminators,
-        accountsToInclude
-      );
+      const eventInfo = getEventInfoFromUpdate(update, expandedConfigs);
 
       if (eventInfo) {
         console.log("✅ Event Detected!");
